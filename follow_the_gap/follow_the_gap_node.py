@@ -35,8 +35,7 @@ class ReactiveFollowGap(Node):
         )
 
         # Parámetros
-        self.max_steering_angle = 0.6  # rad (~20 grados)
-        self.default_speed = 2.0       # m/s
+        self.max_steering_angle = 2.0  # rad
 
         self.en_zona_meta = False
         self.contador_vueltas = 0     
@@ -61,10 +60,6 @@ class ReactiveFollowGap(Node):
         # 2. Recortar valores mayores a 5.0
         proc_ranges = np.clip(proc_ranges, 0.0, 5.0)
 
-        # 3. Suavizar con media móvil (ventana de 5)
-        #kernel = np.ones(5) / 5
-        #proc_ranges = np.convolve(proc_ranges, kernel, mode='same')
-
         return proc_ranges
 
     def find_max_gap(self, free_space_ranges):
@@ -78,7 +73,7 @@ class ReactiveFollowGap(Node):
         - start_i, end_i: índices del inicio y fin del gap más largo
         """
         # Crea una máscara que filtra los puntos con distancia menor al umbral
-        threshold = 1.0  # Distancia mínima para considerar "espacio libre"
+        threshold = 3.8  # Distancia mínima para considerar "espacio libre"
         masked = np.ma.masked_where(free_space_ranges < threshold, free_space_ranges)
 
         # Agrupa regiones consecutivas que no están enmascaradas
@@ -123,14 +118,21 @@ class ReactiveFollowGap(Node):
         """
 
         # 1. Obtener datos del LiDAR
-        ranges = data.ranges
+        full_ranges = np.array(data.ranges)
+        total_points = len(full_ranges)
+        fov_points = 270  # Aproximadamente 67.5° de FOV si total = 1080 (1080 * 270/1080 = 25% del escaneo total)
+        center = total_points // 2
+        start_idx = center - (fov_points // 2)
+        end_idx = center + (fov_points // 2)
+        ranges = full_ranges[start_idx:end_idx]
+
 
         # 2. Preprocesar los datos
         proc_ranges = self.preprocess_lidar(ranges)
 
         # 3. Eliminar burbuja
         closest_idx = np.argmin(proc_ranges)
-        bubble_radius = 70  # número de puntos alrededor del más cercano que se eliminan
+        bubble_radius = 5  # número de puntos alrededor del más cercano que se eliminan 
         start = max(0, closest_idx - bubble_radius)
         end = min(len(proc_ranges), closest_idx + bubble_radius)
         proc_ranges[start:end] = 0.0
@@ -141,15 +143,22 @@ class ReactiveFollowGap(Node):
         # 5. Escoger el mejor punto (centro) dentro del gap
         best_i = self.find_best_point(start_i, end_i, proc_ranges)
 
-        # 6. Calcular ángulo de dirección (0 = centro del LiDAR)
+        # 6. Calcular ángulo de dirección (0 = centro del LiDAR recortado)
         mid_idx = len(proc_ranges) // 2
-        steering_angle = (best_i - mid_idx) * data.angle_increment
+
+        # Ajuste del ángulo considerando el recorte
+        relative_index = best_i - mid_idx
+        steering_angle = relative_index * data.angle_increment
 
         # Limitar el ángulo de giro si excede el máximo
         steering_angle = np.clip(steering_angle, -self.max_steering_angle, self.max_steering_angle)
 
+        # Calcular velocidad dependiendo del ángulo
+        abs_angle = abs(steering_angle)
+        velocidad = np.interp(abs_angle, [0.0, self.max_steering_angle], [11.3, 1.0])
+
         # 7. Publicar el comando
-        self.publish_drive(steering_angle, self.default_speed)
+        self.publish_drive(steering_angle, velocidad)
 
     def publish_drive(self, angle, speed):
         """
