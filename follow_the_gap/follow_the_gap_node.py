@@ -185,9 +185,15 @@ class ReactiveFollowGap(Node):
                 if self.tiempo_ultima_vuelta is not None:
                     duracion = ahora - self.tiempo_ultima_vuelta
                     minutos = duracion / 60.0
+
+                    # Convertir a formato mm:ss
+                    minutos_enteros = int(duracion // 60)
+                    segundos_restantes = int(duracion % 60)
+                    formato_digital = f"{minutos_enteros}:{segundos_restantes:02d}"
+
                     self.tiempos_vueltas.append(minutos)
                     self.get_logger().info(
-                        f"🏁 Vuelta {self.contador_vueltas} completada. Tiempo: {minutos:.3f} min"
+                        f"🏁 Vuelta {self.contador_vueltas} completada. Tiempo: {minutos:.3f} min ({formato_digital})"
                     )
                 self.tiempo_ultima_vuelta = ahora
 
