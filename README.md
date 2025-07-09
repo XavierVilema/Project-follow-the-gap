@@ -77,7 +77,7 @@ ros2 run follow_the_gap follow_the_gap_node
 ## 🎥 Video de Evidencia
 
 Puedes ver el funcionamiento del controlador reactivo en el siguiente video:
-👉 [Ver video de la competencia](https://drive.google.com/file/d/1whOJEgVwjaXxz5BFFP_v07S3cYfFcmvI/view?usp=sharing)
+👉 [Ver video de la competencia](https://drive.google.com/file/d/1ZTIS8hEFYDNYYwF15dC_-EgTo2jMuQCE/view?usp=sharing)
 
 ## 👤 Autor
 
